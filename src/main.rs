@@ -6,16 +6,19 @@ pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0;
 pub const ENEMY_SIZE: f32 = 64.0;
 pub const ENEMY_SPEED: f32 = 200.0;
-pub const NUMBER_OF_ENEMIES: usize = 4;
 pub const NUMBER_OF_STARS: usize = 4;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, (spawn_player, spawn_enemies))
+        .init_resource::<Score>()
+        .init_resource::<SpawnEnemyTimer>()
+        .init_resource::<Enemies>()
+        .add_systems(Startup, spawn_player)
         .add_systems(
             Update,
             (
+                spawn_enemies,
                 player_movement,
                 window_border_movement,
                 enemy_movement,
@@ -23,6 +26,8 @@ fn main() {
                 detect_collision,
                 spawn_stars,
                 collect_stars,
+                update_score,
+                tick_enemy_timer,
             ),
         )
         .run();
@@ -38,6 +43,38 @@ pub struct Enemy {
 
 #[derive(Component)]
 pub struct Star {}
+
+#[derive(Resource)]
+pub struct Enemies {
+    pub value: u32,
+}
+impl Default for Enemies {
+    fn default() -> Enemies {
+        Enemies { value: 4 }
+    }
+}
+
+#[derive(Resource)]
+pub struct Score {
+    pub value: u32,
+}
+impl Default for Score {
+    fn default() -> Score {
+        Score { value: 0 }
+    }
+}
+
+#[derive(Resource)]
+pub struct SpawnEnemyTimer {
+    pub timer: Timer,
+}
+impl Default for SpawnEnemyTimer {
+    fn default() -> SpawnEnemyTimer {
+        SpawnEnemyTimer {
+            timer: Timer::from_seconds(10.0, TimerMode::Repeating),
+        }
+    }
+}
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle { ..default() });
@@ -56,12 +93,24 @@ pub fn spawn_enemies(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
+    enemy_spawn_timer: ResMut<SpawnEnemyTimer>,
+    mut number_of_enemies: ResMut<Enemies>,
+    mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
 ) {
-    let window = window_query.get_single().unwrap();
-    let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
-    let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+    let mut current_enemies: u32 = 0;
+    for (_enemy_entity, _enemy_transform) in enemy_query.iter_mut() {
+        current_enemies += 1;
+    }
 
-    for _ in 0..NUMBER_OF_ENEMIES {
+    if enemy_spawn_timer.timer.finished() {
+        number_of_enemies.value += 1;
+    }
+
+    for _ in 0..(number_of_enemies.value - current_enemies) {
+        let window = window_query.get_single().unwrap();
+        let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+        let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+
         let random_x = (rand::random::<f32>() * width * 2.0) - width;
         let random_y = (rand::random::<f32>() * height * 2.0) - height;
 
@@ -113,6 +162,7 @@ pub fn collect_stars(
     mut star_query: Query<(Entity, &Transform), With<Star>>,
     player_query: Query<&Transform, With<Player>>,
     asset_server: Res<AssetServer>,
+    mut score: ResMut<Score>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
         for (star_entity, star_transform) in star_query.iter_mut() {
@@ -135,8 +185,9 @@ pub fn collect_stars(
                     source: sound_effect,
                     ..default()
                 });
-
                 commands.entity(star_entity).despawn();
+
+                score.value += 1;
             }
         }
     }
@@ -265,4 +316,14 @@ pub fn window_border_movement(
             transform.translation.y = -half_window_height + half_player_size;
         }
     }
+}
+
+pub fn update_score(score: Res<Score>) {
+    if score.is_changed() {
+        println!("Score: {}", score.value);
+    }
+}
+
+pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time>) {
+    enemy_timer.timer.tick(time.delta());
 }
