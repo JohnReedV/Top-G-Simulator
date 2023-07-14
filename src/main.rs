@@ -19,6 +19,7 @@ fn main() {
                 window_border_movement,
                 enemy_movement,
                 confine_enemy_to_window,
+                detect_collision,
             ),
         )
         .run();
@@ -110,6 +111,8 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &mut Enemy)>, time
 pub fn confine_enemy_to_window(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
 ) {
     let window = window_query.get_single().unwrap();
     let half_window_width = window.width() / 2.0;
@@ -119,24 +122,75 @@ pub fn confine_enemy_to_window(
     for (mut transform, mut enemy) in enemy_query.iter_mut() {
         let enemy_x = transform.translation.x;
         let enemy_y = transform.translation.y;
+        let mut direction_changed: bool = false;
 
         if enemy_x + half_enemy_size > half_window_width {
             enemy.direction.x *= -1.0;
             transform.translation.x = half_window_width - half_enemy_size;
+            direction_changed = true;
         }
         if enemy_y + half_enemy_size > half_window_height {
             enemy.direction.y *= -1.0;
             transform.translation.y = half_window_height - half_enemy_size;
+            direction_changed = true;
         }
         if enemy_x - half_enemy_size < -half_window_width {
             enemy.direction.x *= -1.0;
             transform.translation.x = -half_window_width + half_enemy_size;
+            direction_changed = true;
         }
         if enemy_y - half_enemy_size < -half_window_height {
             enemy.direction.y *= -1.0;
             transform.translation.y = -half_window_height + half_enemy_size;
+            direction_changed = true;
+        }
+
+        if direction_changed {
+            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+
+            let sound_effect = if rand::random::<f32>() > 0.5 {
+                sound_effect_1
+            } else {
+                sound_effect_2
+            };
+
+            commands.spawn(AudioBundle {
+                source: sound_effect,
+                ..default()
+            });
         }
     }
+}
+
+pub fn detect_collision(
+    mut commands: Commands,
+    player_query: Query<(Entity, &Transform), With<Player>>,
+    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok((player_entity, player_transform)) = player_query.get_single() {
+        for (_enemy_entity, enemy_transform) in enemy_query.iter() {
+            let player_x = player_transform.translation.x;
+            let player_y = player_transform.translation.y;
+            let enemy_x = enemy_transform.translation.x;
+            let enemy_y = enemy_transform.translation.y;
+
+            if is_collision(enemy_x, enemy_y, player_x, player_y) {
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/explosionCrunch    _000.ogg"),
+                    ..default()
+                });
+                commands.entity(player_entity).despawn();
+
+                println!("Game Over! >:)");
+            }
+        }
+    }
+}
+
+fn is_collision(enemy_x: f32, enemy_y: f32, player_x: f32, player_y: f32) -> bool {
+    return ((enemy_x - player_x).powi(2) + (enemy_y - player_y).powi(2)).sqrt() <= PLAYER_SIZE;
 }
 
 pub fn window_border_movement(
