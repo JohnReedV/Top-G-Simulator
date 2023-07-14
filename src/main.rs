@@ -7,6 +7,7 @@ pub const PLAYER_SIZE: f32 = 64.0;
 pub const ENEMY_SIZE: f32 = 64.0;
 pub const ENEMY_SPEED: f32 = 200.0;
 pub const NUMBER_OF_ENEMIES: usize = 4;
+pub const NUMBER_OF_STARS: usize = 4;
 
 fn main() {
     App::new()
@@ -20,6 +21,8 @@ fn main() {
                 enemy_movement,
                 confine_enemy_to_window,
                 detect_collision,
+                spawn_stars,
+                collect_stars,
             ),
         )
         .run();
@@ -32,6 +35,9 @@ pub struct Player {}
 pub struct Enemy {
     pub direction: Vec2,
 }
+
+#[derive(Component)]
+pub struct Star {}
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle { ..default() });
@@ -69,6 +75,70 @@ pub fn spawn_enemies(
                 direction: Vec2::new(rand::random::<f32>(), rand::random::<f32>()).normalize(),
             },
         ));
+    }
+}
+
+pub fn spawn_stars(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    mut star_query: Query<(Entity, &Transform), With<Star>>,
+) {
+    let mut current_stars: usize = 0;
+    for (_star_entity, _star_transform) in star_query.iter_mut() {
+        current_stars += 1;
+    }
+
+    for _ in 0..(NUMBER_OF_STARS - current_stars) {
+        let window = window_query.get_single().unwrap();
+        let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+        let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+
+        let random_x = (rand::random::<f32>() * width * 2.0) - width;
+        let random_y = (rand::random::<f32>() * height * 2.0) - height;
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Star {},
+        ));
+    }
+}
+
+pub fn collect_stars(
+    mut commands: Commands,
+    mut star_query: Query<(Entity, &Transform), With<Star>>,
+    player_query: Query<&Transform, With<Player>>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (star_entity, star_transform) in star_query.iter_mut() {
+            if is_collision(
+                star_transform.translation.x,
+                star_transform.translation.y,
+                player_transform.translation.x,
+                player_transform.translation.y,
+            ) {
+                let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+                let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+
+                let sound_effect = if rand::random::<f32>() > 0.5 {
+                    sound_effect_1
+                } else {
+                    sound_effect_2
+                };
+
+                commands.spawn(AudioBundle {
+                    source: sound_effect,
+                    ..default()
+                });
+
+                commands.entity(star_entity).despawn();
+            }
+        }
     }
 }
 
@@ -111,8 +181,6 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &mut Enemy)>, time
 pub fn confine_enemy_to_window(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
 ) {
     let window = window_query.get_single().unwrap();
     let half_window_width = window.width() / 2.0;
@@ -122,43 +190,22 @@ pub fn confine_enemy_to_window(
     for (mut transform, mut enemy) in enemy_query.iter_mut() {
         let enemy_x = transform.translation.x;
         let enemy_y = transform.translation.y;
-        let mut direction_changed: bool = false;
 
         if enemy_x + half_enemy_size > half_window_width {
             enemy.direction.x *= -1.0;
             transform.translation.x = half_window_width - half_enemy_size;
-            direction_changed = true;
         }
         if enemy_y + half_enemy_size > half_window_height {
             enemy.direction.y *= -1.0;
             transform.translation.y = half_window_height - half_enemy_size;
-            direction_changed = true;
         }
         if enemy_x - half_enemy_size < -half_window_width {
             enemy.direction.x *= -1.0;
             transform.translation.x = -half_window_width + half_enemy_size;
-            direction_changed = true;
         }
         if enemy_y - half_enemy_size < -half_window_height {
             enemy.direction.y *= -1.0;
             transform.translation.y = -half_window_height + half_enemy_size;
-            direction_changed = true;
-        }
-
-        if direction_changed {
-            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
-            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
-
-            let sound_effect = if rand::random::<f32>() > 0.5 {
-                sound_effect_1
-            } else {
-                sound_effect_2
-            };
-
-            commands.spawn(AudioBundle {
-                source: sound_effect,
-                ..default()
-            });
         }
     }
 }
