@@ -4,16 +4,14 @@ use bevy::window::PrimaryWindow;
 
 pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0;
+pub const ENEMY_SIZE: f32 = 64.0;
 pub const NUMBER_OF_ENEMIES: usize = 4;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(spawn_player)
-        .add_startup_system(spawn_camera)
-        .add_startup_system(spawn_enemies)
-        .add_system(player_movement)
-        .add_system(window_border_movement)
+        .add_systems(Startup, (spawn_player, spawn_enemies))
+        .add_systems(Update, (player_movement, window_border_movement))
         .run();
 }
 
@@ -23,29 +21,17 @@ pub struct Player {}
 #[derive(Component)]
 pub struct Enemy {}
 
-pub fn spawn_player(
-    mut commands: Commands,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    asset_server: Res<AssetServer>,
-) {
-    let window = window_query.get_single().unwrap();
+pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2dBundle { ..default() });
 
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
             texture: asset_server.load("sprites/ball_blue_large.png"),
             ..default()
         },
         Player {},
     ));
-}
-
-pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
-    let window = window_query.get_single().unwrap();
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
-        ..default()
-    });
 }
 
 pub fn spawn_enemies(
@@ -54,10 +40,12 @@ pub fn spawn_enemies(
     asset_server: Res<AssetServer>,
 ) {
     let window = window_query.get_single().unwrap();
+    let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+    let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
 
     for _ in 0..NUMBER_OF_ENEMIES {
-        let random_x = rand::random::<f32>() * window.width();
-        let random_y = rand::random::<f32>() * window.height();
+        let random_x = (rand::random::<f32>() * width * 2.0) - width;
+        let random_y = (rand::random::<f32>() * height * 2.0) - height;
 
         commands.spawn((
             SpriteBundle {
@@ -102,25 +90,26 @@ pub fn player_movement(
 pub fn window_border_movement(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut player_query: Query<&mut Transform, With<Player>>,
-    time: Res<Time>,
 ) {
     if let Ok(mut transform) = player_query.get_single_mut() {
         let player_x = transform.translation.x;
         let player_y = transform.translation.y;
         let window = window_query.get_single().unwrap();
+        let half_window_width = window.width() / 2.0;
+        let half_window_height = window.height() / 2.0;
         let half_player_size = PLAYER_SIZE / 2.0;
 
-        if player_x + half_player_size > window.width() {
-            transform.translation.x = player_x - 1.0 * PLAYER_SPEED * time.delta_seconds();
+        if player_x + half_player_size > half_window_width {
+            transform.translation.x = half_window_width - half_player_size;
         }
-        if player_y + half_player_size > window.height() {
-            transform.translation.y = player_y - 1.0 * PLAYER_SPEED * time.delta_seconds();
+        if player_y + half_player_size > half_window_height {
+            transform.translation.y = half_window_height - half_player_size;
         }
-        if player_x - half_player_size < 0.0 {
-            transform.translation.x = player_x + 1.0 * PLAYER_SPEED * time.delta_seconds();
+        if player_x - half_player_size < -half_window_width {
+            transform.translation.x = -half_window_width + half_player_size;
         }
-        if player_y - half_player_size < 0.0 {
-            transform.translation.y = player_y + 1.0 * PLAYER_SPEED * time.delta_seconds();
+        if player_y - half_player_size < -half_window_height {
+            transform.translation.y = -half_window_height + half_player_size;
         }
     }
 }
