@@ -1,6 +1,5 @@
 #[allow(unused_variables)]
-use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
 
 pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0;
@@ -14,6 +13,7 @@ fn main() {
         .init_resource::<Score>()
         .init_resource::<SpawnEnemyTimer>()
         .init_resource::<Enemies>()
+        .add_event::<GameOver>()
         .add_systems(Startup, spawn_player)
         .add_systems(
             Update,
@@ -28,6 +28,7 @@ fn main() {
                 collect_stars,
                 update_score,
                 tick_enemy_timer,
+                exit_game,
             ),
         )
         .run();
@@ -74,6 +75,11 @@ impl Default for SpawnEnemyTimer {
             timer: Timer::from_seconds(10.0, TimerMode::Repeating),
         }
     }
+}
+
+#[derive(Event)]
+pub struct GameOver {
+    pub score: u32,
 }
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -263,9 +269,11 @@ pub fn confine_enemy_to_window(
 
 pub fn detect_collision(
     mut commands: Commands,
+    mut game_over_event_writer: EventWriter<GameOver>,
     player_query: Query<(Entity, &Transform), With<Player>>,
     enemy_query: Query<(Entity, &Transform), With<Enemy>>,
     asset_server: Res<AssetServer>,
+    score: Res<Score>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single() {
         for (_enemy_entity, enemy_transform) in enemy_query.iter() {
@@ -280,8 +288,7 @@ pub fn detect_collision(
                     ..default()
                 });
                 commands.entity(player_entity).despawn();
-
-                println!("Game Over! >:)");
+                game_over_event_writer.send(GameOver { score: score.value });
             }
         }
     }
@@ -326,4 +333,10 @@ pub fn update_score(score: Res<Score>) {
 
 pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time>) {
     enemy_timer.timer.tick(time.delta());
+}
+
+pub fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut exit: EventWriter<AppExit>) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        exit.send(AppExit);
+    }
 }
