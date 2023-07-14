@@ -178,7 +178,7 @@ pub fn detect_collision(
 
             if is_collision(enemy_x, enemy_y, player_x, player_y) {
                 commands.spawn(AudioBundle {
-                    source: asset_server.load("audio/explosionCrunch    _000.ogg"),
+                    source: asset_server.load("audio/explosionCrunch_000.ogg"),
                     ..default()
                 });
                 commands.entity(player_entity).despawn();
