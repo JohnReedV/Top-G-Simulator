@@ -5,13 +5,22 @@ use bevy::window::PrimaryWindow;
 pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0;
 pub const ENEMY_SIZE: f32 = 64.0;
+pub const ENEMY_SPEED: f32 = 200.0;
 pub const NUMBER_OF_ENEMIES: usize = 4;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, (spawn_player, spawn_enemies))
-        .add_systems(Update, (player_movement, window_border_movement))
+        .add_systems(
+            Update,
+            (
+                player_movement,
+                window_border_movement,
+                enemy_movement,
+                confine_enemy_to_window,
+            ),
+        )
         .run();
 }
 
@@ -19,7 +28,9 @@ fn main() {
 pub struct Player {}
 
 #[derive(Component)]
-pub struct Enemy {}
+pub struct Enemy {
+    pub direction: Vec2,
+}
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle { ..default() });
@@ -53,7 +64,9 @@ pub fn spawn_enemies(
                 texture: asset_server.load("sprites/ball_red_large.png"),
                 ..default()
             },
-            Enemy {},
+            Enemy {
+                direction: Vec2::new(rand::random::<f32>(), rand::random::<f32>()).normalize(),
+            },
         ));
     }
 }
@@ -84,6 +97,45 @@ pub fn player_movement(
         }
 
         transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
+    }
+}
+
+pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &mut Enemy)>, time: Res<Time>) {
+    for (mut transform, enemy) in enemy_query.iter_mut() {
+        let direction = Vec3::new(enemy.direction.x, enemy.direction.y, 0.0);
+        transform.translation += direction * ENEMY_SPEED * time.delta_seconds();
+    }
+}
+
+pub fn confine_enemy_to_window(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
+) {
+    let window = window_query.get_single().unwrap();
+    let half_window_width = window.width() / 2.0;
+    let half_window_height = window.height() / 2.0;
+    let half_enemy_size = ENEMY_SIZE / 2.0;
+
+    for (mut transform, mut enemy) in enemy_query.iter_mut() {
+        let enemy_x = transform.translation.x;
+        let enemy_y = transform.translation.y;
+
+        if enemy_x + half_enemy_size > half_window_width {
+            enemy.direction.x *= -1.0;
+            transform.translation.x = half_window_width - half_enemy_size;
+        }
+        if enemy_y + half_enemy_size > half_window_height {
+            enemy.direction.y *= -1.0;
+            transform.translation.y = half_window_height - half_enemy_size;
+        }
+        if enemy_x - half_enemy_size < -half_window_width {
+            enemy.direction.x *= -1.0;
+            transform.translation.x = -half_window_width + half_enemy_size;
+        }
+        if enemy_y - half_enemy_size < -half_window_height {
+            enemy.direction.y *= -1.0;
+            transform.translation.y = -half_window_height + half_enemy_size;
+        }
     }
 }
 
