@@ -5,8 +5,8 @@ pub mod systems;
 
 use bevy::prelude::*;
 use events::*;
-use systems::*;
 use resources::*;
+use systems::*;
 
 fn main() {
     App::new()
@@ -14,6 +14,7 @@ fn main() {
         .init_resource::<Score>()
         .init_resource::<SpawnEnemyTimer>()
         .init_resource::<Enemies>()
+        .init_resource::<FpsTracker>()
         .add_event::<GameOver>()
         .add_systems(Startup, spawn_player)
         .add_systems(
@@ -21,7 +22,6 @@ fn main() {
             (
                 spawn_enemies,
                 player_movement,
-                window_border_movement,
                 enemy_movement,
                 confine_enemy_to_window,
                 detect_collision,
@@ -30,6 +30,7 @@ fn main() {
                 update_score,
                 tick_enemy_timer,
                 exit_game,
+                fps_system,
             ),
         )
         .run();

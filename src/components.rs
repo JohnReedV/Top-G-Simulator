@@ -10,3 +10,6 @@ pub struct Enemy {
 
 #[derive(Component)]
 pub struct Star {}
+
+#[derive(Component)]
+pub struct FPS {}

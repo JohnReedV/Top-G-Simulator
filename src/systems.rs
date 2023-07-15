@@ -1,8 +1,8 @@
+use crate::components::*;
+use crate::events::*;
+use crate::resources::*;
 use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
 use rand::prelude::*;
-use crate::events::*;
-use crate::components::*;
-use crate::resources::*;
 
 pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0;
@@ -266,5 +266,48 @@ pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time
 pub fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut exit: EventWriter<AppExit>) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         exit.send(AppExit);
+    }
+}
+
+pub fn fps_system(
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    mut tracker: ResMut<FpsTracker>,
+    fps_query: Query<Entity, With<FPS>>,
+    time: Res<Time>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    keyboard_input: Res<Input<KeyCode>>,
+) {
+    if keyboard_input.just_released(KeyCode::F) {
+        tracker.enabled = !tracker.enabled;
+    }
+
+    for fps_entity in fps_query.iter() {
+        commands.entity(fps_entity).despawn();
+    }
+
+    if tracker.enabled {
+        tracker.update(time);
+
+
+        let window = window_query.get_single().unwrap();
+        let padding = 30.0;
+        let x = window.width() / 2.0 - padding;
+        let y = window.height() / 2.0 - padding;
+
+        let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+        let text_style = TextStyle {
+            font: font.clone(),
+            font_size: 30.0,
+            color: Color::WHITE,
+        };
+        commands.spawn((
+            Text2dBundle {
+                text: Text::from_section(tracker.fps.to_string(), text_style),
+                transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+                ..default()
+            },
+            FPS {},
+        ));
     }
 }
