@@ -253,9 +253,38 @@ pub fn window_border_movement(
     }
 }
 
-pub fn update_score(score: Res<Score>) {
+pub fn update_score(
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    score: Res<Score>,
+    score_component_query: Query<Entity, With<ScoreComponent>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+
     if score.is_changed() {
-        println!("Score: {}", score.value);
+        for score_component_entity in score_component_query.iter() {
+            commands.entity(score_component_entity).despawn();
+        }
+        
+        let window = window_query.get_single().unwrap();
+        let x = -window.width() / 2.0 + 50.0;
+        let y = window.height() / 2.0 - 30.0;
+
+        let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+        let text_style = TextStyle {
+            font: font.clone(),
+            font_size: 30.0,
+            color: Color::WHITE,
+        };
+        commands.spawn((
+            Text2dBundle {
+                text: Text::from_section(format!("Score: {}", score.value)
+                , text_style),
+                transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+                ..default()
+            },
+            ScoreComponent {},
+        ));
     }
 }
 
@@ -289,11 +318,9 @@ pub fn fps_system(
     if tracker.enabled {
         tracker.update(time);
 
-
         let window = window_query.get_single().unwrap();
-        let padding = 30.0;
-        let x = window.width() / 2.0 - padding;
-        let y = window.height() / 2.0 - padding;
+        let x = window.width() / 2.0 - 50.0;
+        let y = window.height() / 2.0 - 30.0;
 
         let font = asset_server.load("fonts/FiraSans-Bold.ttf");
         let text_style = TextStyle {
@@ -303,7 +330,7 @@ pub fn fps_system(
         };
         commands.spawn((
             Text2dBundle {
-                text: Text::from_section(tracker.fps.to_string(), text_style),
+                text: Text::from_section(format!("FPS: {}", tracker.fps), text_style),
                 transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
                 ..default()
             },
