@@ -277,6 +277,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ball-game"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "rand",
+ "winapi",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -289,14 +298,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04a90fe8e9c03fa2d30acf39a5178a48526df00c1ccea2fc43fa6d9ca4d8a168"
 dependencies = [
  "bevy_internal",
-]
-
-[[package]]
-name = "bevy-ball-game"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "rand",
 ]
 
 [[package]]
