@@ -4,14 +4,34 @@ pub mod resources;
 pub mod styles;
 pub mod systems;
 
-use bevy::prelude::*;
 use events::*;
 use resources::*;
 use systems::*;
 
+use bevy::{
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    prelude::*,
+    window::{PresentMode, WindowTheme},
+};
+
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+    .add_plugins((
+        DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Ball Game".into(),
+                resolution: (1920., 1080.).into(),
+                present_mode: PresentMode::AutoVsync,
+                fit_canvas_to_parent: true,
+                prevent_default_event_handling: false,
+                window_theme: Some(WindowTheme::Dark),
+                ..default()
+            }),
+            ..default()
+        }),
+        LogDiagnosticsPlugin::default(),
+        FrameTimeDiagnosticsPlugin,
+    ))
         .init_resource::<Score>()
         .init_resource::<SpawnEnemyTimer>()
         .init_resource::<Enemies>()
