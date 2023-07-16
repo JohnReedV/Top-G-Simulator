@@ -16,3 +16,18 @@ pub struct FPS {}
 
 #[derive(Component)]
 pub struct ScoreComponent {}
+
+#[derive(Component)]
+pub enum MenuButtonAction {
+    Play,
+    Exit,
+}
+
+#[derive(Component)]
+pub struct MainMenu {}
+
+#[derive(Component)]
+pub struct PlayButton {}
+
+#[derive(Component)]
+pub struct QuitButton {}

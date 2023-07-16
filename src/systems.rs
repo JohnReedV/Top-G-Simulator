@@ -1,6 +1,7 @@
 use crate::components::*;
 use crate::events::*;
 use crate::resources::*;
+use crate::styles::*;
 use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
 use rand::prelude::*;
 
@@ -10,9 +11,11 @@ pub const ENEMY_SIZE: f32 = 64.0;
 pub const ENEMY_SPEED: f32 = 200.0;
 pub const NUMBER_OF_STARS: usize = 4;
 
-pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle { ..default() });
+}
 
+pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
@@ -23,6 +26,33 @@ pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
+pub fn game_start_event(
+    mut commands: Commands,
+    mut enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+    mut score: ResMut<Score>,
+    mut reader: EventReader<GameStart>,
+    mut game_state: ResMut<NextState<GameState>>,
+    mut number_of_enemies: ResMut<Enemies>,
+) {
+    if let Some(_game_start) = reader.iter().last() {
+        for (enemy_entity, _enemy_transform) in enemy_query.iter_mut() {
+            commands.entity(enemy_entity).despawn()
+        }
+        number_of_enemies.value = 3;
+        score.value = 0;
+        game_state.set(GameState::Game);
+    }
+}
+
+pub fn game_over_event_receiver(
+    mut reader: EventReader<GameOver>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    if let Some(_game_over) = reader.iter().last() {
+        game_state.set(GameState::Menu);
+    }
+}
+
 pub fn spawn_enemies(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
@@ -30,34 +60,45 @@ pub fn spawn_enemies(
     enemy_spawn_timer: ResMut<SpawnEnemyTimer>,
     mut number_of_enemies: ResMut<Enemies>,
     mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
+    mut reader: EventReader<GameStart>,
 ) {
     let mut current_enemies: u32 = 0;
     for (_enemy_entity, _enemy_transform) in enemy_query.iter_mut() {
         current_enemies += 1;
     }
+    number_of_enemies.value = current_enemies;
 
-    if enemy_spawn_timer.timer.finished() {
-        number_of_enemies.value += 1;
+    let mut game_start: bool = false;
+    if let Some(_game_start) = reader.iter().last() {
+        game_start = true
+    }
+    let iterations: i32;
+    if game_start {
+        iterations = 4
+    } else {
+        iterations = 1
     }
 
-    for _ in 0..(number_of_enemies.value - current_enemies) {
-        let window = window_query.get_single().unwrap();
-        let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
-        let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+    if enemy_spawn_timer.timer.finished() || game_start {
+        for _ in 0..iterations {
+            let window = window_query.get_single().unwrap();
+            let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+            let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
 
-        let random_x = (random::<f32>() * width * 2.0) - width;
-        let random_y = (random::<f32>() * height * 2.0) - height;
+            let random_x = (random::<f32>() * width * 2.0) - width;
+            let random_y = (random::<f32>() * height * 2.0) - height;
 
-        commands.spawn((
-            SpriteBundle {
-                transform: Transform::from_xyz(random_x, random_y, 0.0),
-                texture: asset_server.load("sprites/ball_red_large.png"),
-                ..default()
-            },
-            Enemy {
-                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
-            },
-        ));
+            commands.spawn((
+                SpriteBundle {
+                    transform: Transform::from_xyz(random_x, random_y, 0.0),
+                    texture: asset_server.load("sprites/ball_red_large.png"),
+                    ..default()
+                },
+                Enemy {
+                    direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+                },
+            ));
+        }
     }
 }
 
@@ -106,17 +147,8 @@ pub fn collect_stars(
                 player_transform.translation.x,
                 player_transform.translation.y,
             ) {
-                let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
-                let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
-
-                let sound_effect = if random::<f32>() > 0.5 {
-                    sound_effect_1
-                } else {
-                    sound_effect_2
-                };
-
                 commands.spawn(AudioBundle {
-                    source: sound_effect,
+                    source: asset_server.load("audio/laserLarge_000.ogg"),
                     ..default()
                 });
                 commands.entity(star_entity).despawn();
@@ -260,12 +292,11 @@ pub fn update_score(
     score_component_query: Query<Entity, With<ScoreComponent>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
-
     if score.is_changed() {
         for score_component_entity in score_component_query.iter() {
             commands.entity(score_component_entity).despawn();
         }
-        
+
         let window = window_query.get_single().unwrap();
         let x = -window.width() / 2.0 + 50.0;
         let y = window.height() / 2.0 - 30.0;
@@ -278,8 +309,7 @@ pub fn update_score(
         };
         commands.spawn((
             Text2dBundle {
-                text: Text::from_section(format!("Score: {}", score.value)
-                , text_style),
+                text: Text::from_section(format!("Score: {}", score.value), text_style),
                 transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
                 ..default()
             },
@@ -337,4 +367,163 @@ pub fn fps_system(
             FPS {},
         ));
     }
+}
+
+pub fn interact_with_play_button(
+    mut button_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<PlayButton>),
+    >,
+    mut game_start_event_writer: EventWriter<GameStart>,
+) {
+    if let Ok((interaction, mut background_color)) = button_query.get_single_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                *background_color = PRESSED_BUTTON_COLOR.into();
+                game_start_event_writer.send(GameStart {});
+            }
+            Interaction::Hovered => {
+                *background_color = HOVERED_BUTTON_COLOR.into();
+            }
+            Interaction::None => {
+                *background_color = NORMAL_BUTTON_COLOR.into();
+            }
+        }
+    }
+}
+
+pub fn interact_with_quit_button(
+    mut app_exit_event_writer: EventWriter<AppExit>,
+    mut button_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<QuitButton>),
+    >,
+) {
+    if let Ok((interaction, mut background_color)) = button_query.get_single_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                *background_color = PRESSED_BUTTON_COLOR.into();
+                app_exit_event_writer.send(AppExit);
+            }
+            Interaction::Hovered => {
+                *background_color = HOVERED_BUTTON_COLOR.into();
+            }
+            Interaction::None => {
+                *background_color = NORMAL_BUTTON_COLOR.into();
+            }
+        }
+    }
+}
+
+pub fn spawn_main_menu(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    score: Res<Score>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    build_main_menu(&mut commands, &asset_server, &score, window_query);
+}
+
+pub fn despawn_main_menu(mut commands: Commands, main_menu_query: Query<Entity, With<MainMenu>>) {
+    if let Ok(main_menu_entity) = main_menu_query.get_single() {
+        commands.entity(main_menu_entity).despawn_recursive();
+    }
+}
+
+pub fn build_main_menu(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    score: &Res<Score>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) -> Entity {
+    let main_menu_entity = commands
+        .spawn((
+            NodeBundle {
+                style: main_menu_style(window_query),
+                ..default()
+            },
+            MainMenu {},
+        ))
+        .with_children(|parent| {
+            // === Title ===
+            parent
+                .spawn(NodeBundle {
+                    style: title_style(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    // Text
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection::new(
+                                "Ball Game",
+                                get_title_text_style(&asset_server),
+                            )],
+                            alignment: TextAlignment::Center,
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
+            // === Play Button ===
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: button_style(),
+                        background_color: NORMAL_BUTTON_COLOR.into(),
+                        ..default()
+                    },
+                    PlayButton {},
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection::new(
+                                "Play",
+                                get_button_text_style(&asset_server),
+                            )],
+                            alignment: TextAlignment::Center,
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
+            // === Quit Button ===
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: button_style(),
+                        background_color: NORMAL_BUTTON_COLOR.into(),
+                        ..default()
+                    },
+                    QuitButton {},
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection::new(
+                                "Quit",
+                                get_button_text_style(&asset_server),
+                            )],
+                            alignment: TextAlignment::Center,
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
+            parent.spawn(TextBundle {
+                text: Text {
+                    sections: vec![TextSection::new(
+                        format!("Score: {}", score.value),
+                        get_score_text_style(&asset_server),
+                    )],
+                    alignment: TextAlignment::Center,
+                    ..default()
+                },
+                ..default()
+            });
+        })
+        .id();
+
+    return main_menu_entity;
 }

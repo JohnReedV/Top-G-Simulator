@@ -27,7 +27,7 @@ pub struct SpawnEnemyTimer {
 impl Default for SpawnEnemyTimer {
     fn default() -> SpawnEnemyTimer {
         SpawnEnemyTimer {
-            timer: Timer::from_seconds(10.0, TimerMode::Repeating),
+            timer: Timer::from_seconds(5.0, TimerMode::Repeating),
         }
     }
 }
@@ -54,12 +54,29 @@ impl Default for FpsTracker {
 impl FpsTracker {
     pub fn update(&mut self, time: Res<Time>) {
         self.frame_time += time.delta_seconds();
-        self.frame_count += 1; 
+        self.frame_count += 1;
 
         if self.frame_time >= 0.5 {
             self.fps = self.frame_count;
             self.frame_time -= 1.0;
             self.frame_count = 0;
         }
+    }
+}
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum GameState {
+    #[default]
+    Menu,
+    Game,
+}
+
+#[derive(Resource)]
+pub struct FirstGame {
+    pub value: bool,
+}
+impl Default for FirstGame {
+    fn default() -> FirstGame {
+        FirstGame { value: true }
     }
 }
