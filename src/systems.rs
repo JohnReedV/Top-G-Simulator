@@ -59,8 +59,9 @@ pub fn spawn_enemies(
     asset_server: Res<AssetServer>,
     enemy_spawn_timer: ResMut<SpawnEnemyTimer>,
     mut number_of_enemies: ResMut<Enemies>,
-    mut enemy_query: Query<(&mut Transform, &mut Enemy)>,
+    mut enemy_query: Query<(&mut Transform, &mut Enemy), Without<Player>>,
     mut reader: EventReader<GameStart>,
+    player_query: Query<&Transform, With<Player>>,
 ) {
     let mut current_enemies: u32 = 0;
     for (_enemy_entity, _enemy_transform) in enemy_query.iter_mut() {
@@ -85,8 +86,18 @@ pub fn spawn_enemies(
             let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
             let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
 
-            let random_x = (random::<f32>() * width * 2.0) - width;
-            let random_y = (random::<f32>() * height * 2.0) - height;
+            let mut random_x = (random::<f32>() * width * 2.0) - width;
+            let mut random_y = (random::<f32>() * height * 2.0) - height;
+
+            if let Ok(player_transform) = player_query.get_single() {
+                let player_x: f32 = player_transform.translation.x;
+                let player_y: f32 = player_transform.translation.y;
+
+                while is_collision(random_x, random_y, player_x, player_y) {
+                    random_x = (random::<f32>() * width * 2.0) - width;
+                    random_y = (random::<f32>() * height * 2.0) - height;
+                }
+            }
 
             commands.spawn((
                 SpriteBundle {
