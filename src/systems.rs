@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::components::*;
 use crate::events::*;
 use crate::resources::*;
@@ -22,8 +24,46 @@ pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
             texture: asset_server.load("sprites/ball_blue_large.png"),
             ..default()
         },
-        Player {},
+        Player {
+            timer: Timer::from_seconds(0.1, TimerMode::Repeating),
+            color_index: 14,
+        },
     ));
+}
+
+pub fn spawn_rainbow_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands
+        .spawn(SpriteBundle {
+            sprite: Sprite {
+                color: RAINBOW_COLORS[0],
+                ..Default::default()
+            },
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            texture: asset_server.load("sprites/ball_blue_large.png"),
+            ..Default::default()
+        })
+        .insert(Player {
+            timer: Timer::from_seconds(0.1, TimerMode::Repeating),
+            color_index: 0,
+        });
+}
+
+pub fn update_player_colors(
+    time: Res<Time>,
+    mut query: Query<(&mut Player, &mut Sprite)>,
+    invinci_state: Res<State<Invincible>>,
+) {
+    for (mut player, mut sprite) in query.iter_mut() {
+        if *invinci_state.get() == Invincible::On {
+            player.timer.tick(time.delta());
+            if player.timer.finished() {
+                player.color_index = (player.color_index + 1) % RAINBOW_COLORS.len();
+                sprite.color = RAINBOW_COLORS[player.color_index];
+            }
+        } else {
+            sprite.color = RAINBOW_COLORS[14]
+        }
+    }
 }
 
 pub fn game_start_event(
@@ -143,6 +183,92 @@ pub fn spawn_stars(
     }
 }
 
+pub fn spawn_invincibility(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    mut invinci_spawn_timer: ResMut<SpawnInvinciTimer>,
+    mut invinci_query: Query<Entity, With<Invinci>>,
+    invinci_state: Res<State<Invincible>>,
+    time: Res<Time>,
+) {
+    invinci_spawn_timer.timer.tick(time.delta());
+
+    let mut invinci_exist: bool = false;
+    for _invinci_entity in invinci_query.iter_mut() {
+        invinci_exist = true;
+    }
+
+    if invinci_spawn_timer.timer.just_finished()
+        && !invinci_exist
+        && *invinci_state != Invincible::On
+    {
+        let window = window_query.get_single().unwrap();
+        let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+        let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+
+        let random_x = (random::<f32>() * width * 2.0) - width;
+        let random_y = (random::<f32>() * height * 2.0) - height;
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0),
+                texture: asset_server.load("sprites/flower.png"),
+                ..default()
+            },
+            Invinci {},
+        ));
+
+        let random_time = invinci_spawn_timer.rng.gen_range(0..240);
+        invinci_spawn_timer
+            .timer
+            .set_duration(Duration::from_secs(random_time));
+        invinci_spawn_timer.timer.reset();
+    }
+}
+
+pub fn collect_invincibility(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut invinci_state: ResMut<NextState<Invincible>>,
+    mut invinci_query: Query<(Entity, &Transform), With<Invinci>>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (invinci_entity, invinci_transform) in invinci_query.iter_mut() {
+            if is_collision(
+                invinci_transform.translation.x,
+                invinci_transform.translation.y,
+                player_transform.translation.x,
+                player_transform.translation.y,
+            ) {
+                invinci_state.set(Invincible::On);
+                commands.entity(invinci_entity).despawn();
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/Invincibility.oga"),
+                    ..default()
+                });
+            }
+        }
+    }
+}
+
+pub fn disable_invincibility(
+    invinci_duration_timer: Res<InvinciDurationTimer>,
+    mut invinci_state: ResMut<NextState<Invincible>>,
+) {
+    if invinci_duration_timer.timer.finished() {
+        invinci_state.set(Invincible::Off)
+    }
+}
+
+pub fn tick_invinci_duration(
+    mut invinci_duration_timer: ResMut<InvinciDurationTimer>,
+    time: Res<Time>,
+) {
+    invinci_duration_timer.timer.tick(time.delta());
+}
+
 pub fn collect_stars(
     mut commands: Commands,
     mut star_query: Query<(Entity, &Transform), With<Star>>,
@@ -244,6 +370,7 @@ pub fn detect_collision(
     player_query: Query<(Entity, &Transform), With<Player>>,
     enemy_query: Query<(Entity, &Transform), With<Enemy>>,
     asset_server: Res<AssetServer>,
+    invinci_state: Res<State<Invincible>>,
     score: Res<Score>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single() {
@@ -253,7 +380,9 @@ pub fn detect_collision(
             let enemy_x = enemy_transform.translation.x;
             let enemy_y = enemy_transform.translation.y;
 
-            if is_collision(enemy_x, enemy_y, player_x, player_y) {
+            if is_collision(enemy_x, enemy_y, player_x, player_y)
+                && *invinci_state.get() == Invincible::Off
+            {
                 commands.spawn(AudioBundle {
                     source: asset_server.load("audio/explosionCrunch_000.ogg"),
                     ..default()

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::{Rng, rngs::StdRng, SeedableRng}; 
 
 #[derive(Resource)]
 pub struct Enemies {
@@ -78,5 +79,43 @@ pub struct FirstGame {
 impl Default for FirstGame {
     fn default() -> FirstGame {
         FirstGame { value: true }
+    }
+}
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum Invincible {
+    #[default]
+    Off,
+    On,
+}
+
+
+#[derive(Resource)]
+pub struct SpawnInvinciTimer {
+    pub timer: Timer,
+    pub rng: StdRng,
+}
+
+impl Default for SpawnInvinciTimer {
+    fn default() -> Self {
+        let mut rng = StdRng::from_entropy();
+        let random_time = rng.gen_range(0.0..240.0);
+
+        SpawnInvinciTimer {
+            timer: Timer::from_seconds(random_time, TimerMode::Repeating),
+            rng,
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct InvinciDurationTimer {
+    pub timer: Timer,
+}
+impl Default for InvinciDurationTimer {
+    fn default() -> InvinciDurationTimer {
+        InvinciDurationTimer {
+            timer: Timer::from_seconds(30.0, TimerMode::Repeating),
+        }
     }
 }

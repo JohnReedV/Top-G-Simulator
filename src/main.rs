@@ -16,28 +16,31 @@ use bevy::{
 
 fn main() {
     App::new()
-    .add_plugins((
-        DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Ball Game".into(),
-                resolution: (1920., 1080.).into(),
-                present_mode: PresentMode::AutoVsync,
-                fit_canvas_to_parent: true,
-                prevent_default_event_handling: false,
-                window_theme: Some(WindowTheme::Dark),
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Ball Game".into(),
+                    resolution: (1920., 1080.).into(),
+                    present_mode: PresentMode::Immediate,
+                    fit_canvas_to_parent: true,
+                    prevent_default_event_handling: false,
+                    window_theme: Some(WindowTheme::Dark),
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }),
-        LogDiagnosticsPlugin::default(),
-        FrameTimeDiagnosticsPlugin,
-    ))
+            LogDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
+        ))
         .init_resource::<Score>()
         .init_resource::<SpawnEnemyTimer>()
         .init_resource::<Enemies>()
         .init_resource::<FpsTracker>()
         .init_resource::<FirstGame>()
+        .init_resource::<SpawnInvinciTimer>()
+        .init_resource::<InvinciDurationTimer>()
         .add_state::<GameState>()
+        .add_state::<Invincible>()
         .add_event::<GameStart>()
         .add_event::<GameOver>()
         .add_systems(Startup, spawn_camera)
@@ -57,12 +60,22 @@ fn main() {
                 spawn_stars,
                 collect_stars,
                 update_score,
-                tick_enemy_timer,
                 exit_game,
                 fps_system,
                 game_over_event_receiver,
                 despawn_main_menu.run_if(in_state(GameState::Game)),
                 game_start_event,
+                update_player_colors.run_if(in_state(GameState::Game)),
+                spawn_invincibility.run_if(in_state(GameState::Game)),
+                collect_invincibility.run_if(in_state(GameState::Game)),
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                tick_enemy_timer.run_if(in_state(GameState::Game)),
+                tick_invinci_duration.run_if(in_state(Invincible::On)),
+                disable_invincibility.run_if(in_state(Invincible::On)),
             ),
         )
         .run();

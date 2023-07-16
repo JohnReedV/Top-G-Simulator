@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 #[derive(Component)]
-pub struct Player {}
+pub struct Player {
+    pub timer: Timer,
+    pub color_index: usize
+}
 
 #[derive(Component)]
 pub struct Enemy {
@@ -31,3 +34,6 @@ pub struct PlayButton {}
 
 #[derive(Component)]
 pub struct QuitButton {}
+
+#[derive(Component)]
+pub struct Invinci {}
