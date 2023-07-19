@@ -432,30 +432,28 @@ pub fn update_score(
     score_component_query: Query<Entity, With<ScoreComponent>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
-    if score.is_changed() {
-        for score_component_entity in score_component_query.iter() {
-            commands.entity(score_component_entity).despawn();
-        }
-
-        let window = window_query.get_single().unwrap();
-        let x = -window.width() / 2.0 + 50.0;
-        let y = window.height() / 2.0 - 30.0;
-
-        let font = asset_server.load("fonts/FiraSans-Bold.ttf");
-        let text_style = TextStyle {
-            font: font.clone(),
-            font_size: 30.0,
-            color: Color::WHITE,
-        };
-        commands.spawn((
-            Text2dBundle {
-                text: Text::from_section(format!("Score: {}", score.value), text_style),
-                transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
-                ..default()
-            },
-            ScoreComponent {},
-        ));
+    for score_component_entity in score_component_query.iter() {
+        commands.entity(score_component_entity).despawn();
     }
+
+    let window = window_query.get_single().unwrap();
+    let x = -window.width() / 2.0 + 50.0;
+    let y = window.height() / 2.0 - 30.0;
+
+    let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 30.0,
+        color: Color::WHITE,
+    };
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(format!("Score: {}", score.value), text_style),
+            transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+            ..default()
+        },
+        ScoreComponent {},
+    ));
 }
 
 pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time>) {
@@ -570,7 +568,25 @@ pub fn despawn_main_menu(mut commands: Commands, main_menu_query: Query<Entity, 
     }
 }
 
-pub fn build_main_menu(
+pub fn fix_menu_first_game(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    main_menu_query: Query<Entity, With<MainMenu>>,
+    score: Res<Score>,
+    mut timer: ResMut<FixMenuTimer>,
+    time: Res<Time>,
+) {
+    if let Ok(menu_entity) = main_menu_query.get_single() {
+        timer.timer.tick(time.delta());
+        if timer.timer.just_finished() {
+            commands.entity(menu_entity).despawn();
+            build_main_menu(&mut commands, &asset_server, &score, window_query);
+        }
+    }
+}
+
+fn build_main_menu(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     score: &Res<Score>,

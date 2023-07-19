@@ -11,7 +11,7 @@ use systems::*;
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
-    window::{PresentMode, WindowTheme},
+    window::{PresentMode, WindowMode},
 };
 
 fn main() {
@@ -21,10 +21,8 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Ball Game".into(),
                     resolution: (1920., 1080.).into(),
-                    present_mode: PresentMode::Immediate,
-                    fit_canvas_to_parent: true,
-                    prevent_default_event_handling: false,
-                    window_theme: Some(WindowTheme::Dark),
+                    mode: WindowMode::Fullscreen,
+                    present_mode: PresentMode::AutoVsync,
                     ..default()
                 }),
                 ..default()
@@ -39,6 +37,7 @@ fn main() {
         .init_resource::<FirstGame>()
         .init_resource::<SpawnInvinciTimer>()
         .init_resource::<InvinciDurationTimer>()
+        .init_resource::<FixMenuTimer>()
         .add_state::<GameState>()
         .add_state::<Invincible>()
         .add_event::<GameStart>()
@@ -76,6 +75,7 @@ fn main() {
                 tick_enemy_timer.run_if(in_state(GameState::Game)),
                 tick_invinci_duration.run_if(in_state(Invincible::On)),
                 disable_invincibility.run_if(in_state(Invincible::On)),
+                fix_menu_first_game.run_if(in_state(GameState::Menu)),
             ),
         )
         .run();
