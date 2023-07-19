@@ -10,27 +10,22 @@ use resources::*;
 use systems::*;
 
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
     window::{PresentMode, WindowMode},
 };
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Top G Simulator".into(),
-                    resolution: (1920., 1080.).into(),
-                    mode: WindowMode::Fullscreen,
-                    present_mode: PresentMode::AutoVsync,
-                    ..default()
-                }),
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Top G Simulator".into(),
+                resolution: (1920., 1080.).into(),
+                mode: WindowMode::Fullscreen,
+                present_mode: PresentMode::AutoVsync,
                 ..default()
             }),
-            LogDiagnosticsPlugin::default(),
-            FrameTimeDiagnosticsPlugin,
-        ))
+            ..default()
+        }))
         .init_resource::<Score>()
         .init_resource::<SpawnEnemyTimer>()
         .init_resource::<Enemies>()
@@ -79,7 +74,7 @@ fn main() {
                 tick_enemy_timer.run_if(in_state(GameState::Game)),
                 fix_menu_first_game.run_if(in_state(GameState::Menu)),
                 interact_with_sound_button.run_if(in_state(GameState::Menu)),
-                mr_producer
+                mr_producer,
             ),
         )
         .run();
