@@ -4,14 +4,9 @@ use crate::components::*;
 use crate::events::*;
 use crate::resources::*;
 use crate::styles::*;
+use crate::utils::*;
 use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
 use rand::prelude::*;
-
-pub const PLAYER_SPEED: f32 = 500.0;
-pub const PLAYER_SIZE: f32 = 64.0;
-pub const ENEMY_SIZE: f32 = 64.0;
-pub const ENEMY_SPEED: f32 = 200.0;
-pub const NUMBER_OF_STARS: usize = 4;
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle { ..default() });
@@ -21,12 +16,12 @@ pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            texture: asset_server.load("sprites/ball_blue_large.png"),
+            texture: asset_server.load("sprites/tateball.png"),
             ..default()
         },
         Player {
             timer: Timer::from_seconds(0.1, TimerMode::Repeating),
-            color_index: 14,
+            color_index: 22,
         },
     ));
 }
@@ -39,7 +34,7 @@ pub fn spawn_rainbow_player(mut commands: Commands, asset_server: Res<AssetServe
                 ..Default::default()
             },
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            texture: asset_server.load("sprites/ball_blue_large.png"),
+            texture: asset_server.load("sprites/tateball.png"),
             ..Default::default()
         })
         .insert(Player {
@@ -61,7 +56,7 @@ pub fn update_player_colors(
                 sprite.color = RAINBOW_COLORS[player.color_index];
             }
         } else {
-            sprite.color = RAINBOW_COLORS[14]
+            sprite.color = RAINBOW_COLORS[0]
         }
     }
 }
@@ -142,7 +137,7 @@ pub fn spawn_enemies(
             commands.spawn((
                 SpriteBundle {
                     transform: Transform::from_xyz(random_x, random_y, 0.0),
-                    texture: asset_server.load("sprites/ball_red_large.png"),
+                    texture: asset_server.load("sprites/agent.png"),
                     ..default()
                 },
                 Enemy {
@@ -175,7 +170,7 @@ pub fn spawn_stars(
         commands.spawn((
             SpriteBundle {
                 transform: Transform::from_xyz(random_x, random_y, 0.0),
-                texture: asset_server.load("sprites/star.png"),
+                texture: asset_server.load("sprites/money.png"),
                 ..default()
             },
             Star {},
@@ -213,7 +208,7 @@ pub fn spawn_invincibility(
         commands.spawn((
             SpriteBundle {
                 transform: Transform::from_xyz(random_x, random_y, 0.0),
-                texture: asset_server.load("sprites/flower.png"),
+                texture: asset_server.load("sprites/cigars.png"),
                 ..default()
             },
             Invinci {},
@@ -285,7 +280,7 @@ pub fn collect_stars(
                 player_transform.translation.y,
             ) {
                 commands.spawn(AudioBundle {
-                    source: asset_server.load("audio/laserLarge_000.ogg"),
+                    source: asset_server.load("audio/cha.ogg"),
                     ..default()
                 });
                 commands.entity(star_entity).despawn();
@@ -394,10 +389,6 @@ pub fn detect_collision(
     }
 }
 
-fn is_collision(enemy_x: f32, enemy_y: f32, player_x: f32, player_y: f32) -> bool {
-    return ((enemy_x - player_x).powi(2) + (enemy_y - player_y).powi(2)).sqrt() <= PLAYER_SIZE;
-}
-
 pub fn window_border_movement(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut player_query: Query<&mut Transform, With<Player>>,
@@ -437,7 +428,7 @@ pub fn update_score(
     }
 
     let window = window_query.get_single().unwrap();
-    let x = -window.width() / 2.0 + 50.0;
+    let x = -window.width() / 2.0 + 55.0;
     let y = window.height() / 2.0 - 30.0;
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
@@ -448,7 +439,7 @@ pub fn update_score(
     };
     commands.spawn((
         Text2dBundle {
-            text: Text::from_section(format!("Score: {}", score.value), text_style),
+            text: Text::from_section(format!("Score: ${}", score.value), text_style),
             transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
             ..default()
         },
@@ -584,102 +575,4 @@ pub fn fix_menu_first_game(
             build_main_menu(&mut commands, &asset_server, &score, window_query);
         }
     }
-}
-
-fn build_main_menu(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    score: &Res<Score>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-) -> Entity {
-    let main_menu_entity = commands
-        .spawn((
-            NodeBundle {
-                style: main_menu_style(window_query),
-                ..default()
-            },
-            MainMenu {},
-        ))
-        .with_children(|parent| {
-            // === Title ===
-            parent
-                .spawn(NodeBundle {
-                    style: title_style(),
-                    ..default()
-                })
-                .with_children(|parent| {
-                    // Text
-                    parent.spawn(TextBundle {
-                        text: Text {
-                            sections: vec![TextSection::new(
-                                "Ball Game",
-                                get_title_text_style(&asset_server),
-                            )],
-                            alignment: TextAlignment::Center,
-                            ..default()
-                        },
-                        ..default()
-                    });
-                });
-            // === Play Button ===
-            parent
-                .spawn((
-                    ButtonBundle {
-                        style: button_style(),
-                        background_color: NORMAL_BUTTON_COLOR.into(),
-                        ..default()
-                    },
-                    PlayButton {},
-                ))
-                .with_children(|parent| {
-                    parent.spawn(TextBundle {
-                        text: Text {
-                            sections: vec![TextSection::new(
-                                "Play",
-                                get_button_text_style(&asset_server),
-                            )],
-                            alignment: TextAlignment::Center,
-                            ..default()
-                        },
-                        ..default()
-                    });
-                });
-            // === Quit Button ===
-            parent
-                .spawn((
-                    ButtonBundle {
-                        style: button_style(),
-                        background_color: NORMAL_BUTTON_COLOR.into(),
-                        ..default()
-                    },
-                    QuitButton {},
-                ))
-                .with_children(|parent| {
-                    parent.spawn(TextBundle {
-                        text: Text {
-                            sections: vec![TextSection::new(
-                                "Quit",
-                                get_button_text_style(&asset_server),
-                            )],
-                            alignment: TextAlignment::Center,
-                            ..default()
-                        },
-                        ..default()
-                    });
-                });
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection::new(
-                        format!("Score: {}", score.value),
-                        get_score_text_style(&asset_server),
-                    )],
-                    alignment: TextAlignment::Center,
-                    ..default()
-                },
-                ..default()
-            });
-        })
-        .id();
-
-    return main_menu_entity;
 }

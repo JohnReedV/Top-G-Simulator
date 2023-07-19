@@ -3,6 +3,7 @@ pub mod events;
 pub mod resources;
 pub mod styles;
 pub mod systems;
+pub mod utils;
 
 use events::*;
 use resources::*;
@@ -19,7 +20,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "Ball Game".into(),
+                    title: "Top G Simulator".into(),
                     resolution: (1920., 1080.).into(),
                     mode: WindowMode::Fullscreen,
                     present_mode: PresentMode::AutoVsync,
