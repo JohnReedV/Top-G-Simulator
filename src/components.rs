@@ -37,3 +37,6 @@ pub struct QuitButton {}
 
 #[derive(Component)]
 pub struct Invinci {}
+
+#[derive(Component)]
+pub struct DrawEnemyNumber {}

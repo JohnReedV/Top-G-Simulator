@@ -68,6 +68,7 @@ fn main() {
                 update_player_colors.run_if(in_state(GameState::Game)),
                 spawn_invincibility.run_if(in_state(GameState::Game)),
                 collect_invincibility.run_if(in_state(GameState::Game)),
+                draw_enemy_number,
             ),
         )
         .add_systems(

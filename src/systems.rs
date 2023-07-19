@@ -107,6 +107,35 @@ pub fn game_over_event_receiver(
         game_state.set(GameState::Menu);
     }
 }
+pub fn draw_enemy_number(
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    number_of_enemies: ResMut<Enemies>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    enemy_number_query: Query<Entity, With<DrawEnemyNumber>>,
+) {
+
+    for enemy_number_entity in enemy_number_query.iter() {
+        commands.entity(enemy_number_entity).despawn();
+    }
+
+    let window = window_query.get_single().unwrap();
+    let x = window.width() / 64.0;
+    let y = window.height() / 2.0 - 30.0;    
+
+    let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 30.0,
+        color: Color::WHITE,
+    };
+
+    commands.spawn((Text2dBundle {
+        text: Text::from_section(format!("Agents: {}", number_of_enemies.value), text_style),
+        transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+        ..default()
+    }, DrawEnemyNumber {}));
+}
 
 pub fn spawn_enemies(
     mut commands: Commands,
@@ -459,7 +488,7 @@ pub fn update_score(
     }
 
     let window = window_query.get_single().unwrap();
-    let x = -window.width() / 2.0 + 57.0;
+    let x = -window.width() / 2.0 + 59.0;
     let y = window.height() / 2.0 - 30.0;
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
