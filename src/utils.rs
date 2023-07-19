@@ -136,3 +136,41 @@ pub fn build_main_menu(
 
     return main_menu_entity;
 }
+
+pub fn build_sound_button(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    window_query: &Query<&Window, With<PrimaryWindow>>,
+) -> Entity {
+    let window = window_query.single();
+    let button_x = window.width() / 2.0;
+    let button_y = -window.height() + 50.0;
+
+    let button_bundle = ButtonBundle {
+        style: mr_producer_button_style(&window),
+        background_color: NORMAL_BUTTON_COLOR.into(),
+        border_color: BorderColor(Color::BLACK),
+        transform: Transform::from_xyz(button_x, button_y, 0.0),
+        ..default()
+    };
+
+    let text_bundle = TextBundle {
+        text: Text {
+            sections: vec![TextSection::new(
+                "Toggle Tune",
+                get_button_text_style(&asset_server),
+            )],
+            alignment: TextAlignment::Center,
+            ..default()
+        },
+        ..default()
+    };
+
+    return commands
+        .spawn((button_bundle, SoundButton {}))
+        .with_children(|parent| {
+            parent.spawn(text_bundle);
+        })
+        .id();
+}
+

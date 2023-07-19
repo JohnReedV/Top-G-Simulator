@@ -1,8 +1,8 @@
 [package]
-name = "ball-game"
+name = "top_g_simulator"
 version = "0.1.0"
 edition = "2021"
-description = "This is a ball game."
+description = "Spend just a few moments in the life of the TOP G"
 
 [dependencies]
 bevy= "0.11.0"

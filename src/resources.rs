@@ -131,3 +131,22 @@ impl Default for FixMenuTimer {
         }
     }
 }
+
+#[derive(Resource)]
+pub struct MrProducerTimer {
+    pub timer: Timer,
+}
+impl Default for MrProducerTimer {
+    fn default() -> MrProducerTimer {
+        MrProducerTimer {
+            timer: Timer::from_seconds(0.1, TimerMode::Repeating),
+        }
+    }
+}
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum MrProducerState {
+    Off,
+    #[default]
+    On,
+}

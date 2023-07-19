@@ -114,14 +114,13 @@ pub fn draw_enemy_number(
     window_query: Query<&Window, With<PrimaryWindow>>,
     enemy_number_query: Query<Entity, With<DrawEnemyNumber>>,
 ) {
-
     for enemy_number_entity in enemy_number_query.iter() {
         commands.entity(enemy_number_entity).despawn();
     }
 
     let window = window_query.get_single().unwrap();
     let x = window.width() / 64.0;
-    let y = window.height() / 2.0 - 30.0;    
+    let y = window.height() / 2.0 - 30.0;
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     let text_style = TextStyle {
@@ -130,11 +129,14 @@ pub fn draw_enemy_number(
         color: Color::WHITE,
     };
 
-    commands.spawn((Text2dBundle {
-        text: Text::from_section(format!("Agents: {}", number_of_enemies.value), text_style),
-        transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
-        ..default()
-    }, DrawEnemyNumber {}));
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(format!("Agents: {}", number_of_enemies.value), text_style),
+            transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
+            ..default()
+        },
+        DrawEnemyNumber {},
+    ));
 }
 
 pub fn spawn_enemies(
@@ -286,42 +288,50 @@ pub fn collect_invincibility(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut invinci_state: ResMut<NextState<Invincible>>,
+    state: Res<State<Invincible>>,
     mut invinci_query: Query<(Entity, &Transform), With<Invinci>>,
     player_query: Query<&Transform, With<Player>>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        for (invinci_entity, invinci_transform) in invinci_query.iter_mut() {
-            if is_collision(
-                invinci_transform.translation.x,
-                invinci_transform.translation.y,
-                player_transform.translation.x,
-                player_transform.translation.y,
-            ) {
-                invinci_state.set(Invincible::On);
-                commands.entity(invinci_entity).despawn();
-                commands.spawn(AudioBundle {
-                    source: asset_server.load("audio/Invincibility.oga"),
-                    ..default()
-                });
-            }
-        }
-    }
-}
-
-pub fn disable_invincibility(
-    invinci_duration_timer: Res<InvinciDurationTimer>,
-    mut invinci_state: ResMut<NextState<Invincible>>,
-) {
-    if invinci_duration_timer.timer.finished() {
-        invinci_state.set(Invincible::Off)
-    }
-}
-
-pub fn tick_invinci_duration(
+    mut music_controller: Query<&AudioSink, With<MrProducerSong>>,
+    mut mr_producer_timer: ResMut<MrProducerTimer>,
     mut invinci_duration_timer: ResMut<InvinciDurationTimer>,
     time: Res<Time>,
 ) {
-    invinci_duration_timer.timer.tick(time.delta());
+    match *state.get() {
+        Invincible::On => {
+            invinci_duration_timer.timer.tick(time.delta());
+            if invinci_duration_timer.timer.just_finished() {
+                invinci_state.set(Invincible::Off)
+            }
+        }
+        Invincible::Off => {
+            if let Ok(player_transform) = player_query.get_single() {
+                for (invinci_entity, invinci_transform) in invinci_query.iter_mut() {
+                    if is_collision(
+                        invinci_transform.translation.x,
+                        invinci_transform.translation.y,
+                        player_transform.translation.x,
+                        player_transform.translation.y,
+                    ) {
+                        invinci_state.set(Invincible::On);
+                        commands.entity(invinci_entity).despawn();
+
+                        for mr_producer_controller in music_controller.iter_mut() {
+                            mr_producer_controller.stop();
+                        }
+                        mr_producer_timer
+                            .timer
+                            .set_duration(Duration::from_secs(32));
+                        mr_producer_timer.timer.set_elapsed(Duration::from_secs(0));
+
+                        commands.spawn(AudioBundle {
+                            source: asset_server.load("audio/Invincibility.oga"),
+                            ..default()
+                        });
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn collect_stars(
@@ -604,18 +614,92 @@ pub fn interact_with_quit_button(
     }
 }
 
+pub fn interact_with_sound_button(
+    mut mut_mr_producer_state: ResMut<NextState<MrProducerState>>,
+    mr_producer_state: Res<State<MrProducerState>>,
+    mut mr_producer_timer: ResMut<MrProducerTimer>,
+    mut button_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<SoundButton>),
+    >,
+) {
+    if let Ok((interaction, mut background_color)) = button_query.get_single_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                *background_color = PRESSED_BUTTON_COLOR.into();
+
+                if *mr_producer_state.get() == MrProducerState::On {
+                    mut_mr_producer_state.set(MrProducerState::Off);
+                } else if *mr_producer_state.get() == MrProducerState::Off {
+                    mut_mr_producer_state.set(MrProducerState::On);
+                    mr_producer_timer.timer.set_duration(Duration::from_secs(26));
+                    mr_producer_timer.timer.set_elapsed(Duration::from_secs(25));
+                }
+            }
+            Interaction::Hovered => {
+                *background_color = HOVERED_BUTTON_COLOR.into();
+            }
+            Interaction::None => {
+                *background_color = NORMAL_BUTTON_COLOR.into();
+            }
+        }
+    }
+}
+
+pub fn mr_producer(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut mr_producer_timer: ResMut<MrProducerTimer>,
+    mr_producer_state: Res<State<MrProducerState>>,
+    time: Res<Time>,
+    mut music_controller: Query<&AudioSink, With<MrProducerSong>>,
+    invinci_state: Res<State<Invincible>>,
+) {
+    match *mr_producer_state.get() {
+        MrProducerState::On => {
+            mr_producer_timer.timer.tick(time.delta());
+            if mr_producer_timer.timer.finished() && *invinci_state.get() == Invincible::Off {
+                commands.spawn((
+                    AudioBundle {
+                        source: asset_server.load("audio/mrprod.ogg"),
+                        ..default()
+                    },
+                    MrProducerSong {},
+                ));
+                mr_producer_timer
+                    .timer
+                    .set_duration(Duration::from_secs(26));
+            }
+        }
+        MrProducerState::Off => {
+            for mr_producer_controller in music_controller.iter_mut() {
+                mr_producer_controller.stop();
+            }
+        }
+    }
+}
+
 pub fn spawn_main_menu(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     score: Res<Score>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
+    build_sound_button(&mut commands, &asset_server, &window_query);
     build_main_menu(&mut commands, &asset_server, &score, window_query);
 }
 
-pub fn despawn_main_menu(mut commands: Commands, main_menu_query: Query<Entity, With<MainMenu>>) {
+pub fn despawn_main_menu(
+    mut commands: Commands,
+    main_menu_query: Query<Entity, With<MainMenu>>,
+    sound_button_query: Query<Entity, With<SoundButton>>,
+) {
     if let Ok(main_menu_entity) = main_menu_query.get_single() {
         commands.entity(main_menu_entity).despawn_recursive();
+    }
+
+    if let Ok(sound_button_entity) = sound_button_query.get_single() {
+        commands.entity(sound_button_entity).despawn_recursive();
     }
 }
 
@@ -624,6 +708,7 @@ pub fn fix_menu_first_game(
     asset_server: Res<AssetServer>,
     mut commands: Commands,
     main_menu_query: Query<Entity, With<MainMenu>>,
+    mut sound_button_query: Query<Entity, With<SoundButton>>,
     score: Res<Score>,
     mut timer: ResMut<FixMenuTimer>,
     time: Res<Time>,
@@ -631,6 +716,11 @@ pub fn fix_menu_first_game(
     if let Ok(menu_entity) = main_menu_query.get_single() {
         timer.timer.tick(time.delta());
         if timer.timer.just_finished() {
+            for sound_button in sound_button_query.iter_mut() {
+                commands.entity(sound_button).despawn();
+                build_sound_button(&mut commands, &asset_server, &window_query);
+            }
+
             commands.entity(menu_entity).despawn();
             build_main_menu(&mut commands, &asset_server, &score, window_query);
         }

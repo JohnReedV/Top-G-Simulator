@@ -50,9 +50,28 @@ pub fn button_style() -> Style {
     Style {
         justify_content: JustifyContent::Default,
         align_items: AlignItems::Center,
+        border: UiRect::all(Val::Px(5.0)),
         ..default()
     }
 }
+
+pub fn mr_producer_button_style(window: &Window) -> Style {
+    let half_button_width = 60.0;
+
+    Style {
+        width: Val::Px(165.0),
+        height: Val::Px(50.0),
+        position_type: PositionType::Absolute,
+        left: Val::Px((window.width() / 2.0) - half_button_width), // Position at 50% to the left, which is center horizontally
+        bottom: Val::Px(0.0), // Position at the very bottom
+        justify_content: JustifyContent::Center, // This will center your content if it's smaller than your button
+        align_items: AlignItems::Center, // This will center your content vertically
+        border: UiRect::all(Val::Px(5.0)),
+        ..default()
+    }
+}
+
+
 
 pub fn image_style() -> Style {
     Style {

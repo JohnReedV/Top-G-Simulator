@@ -39,8 +39,10 @@ fn main() {
         .init_resource::<SpawnInvinciTimer>()
         .init_resource::<InvinciDurationTimer>()
         .init_resource::<FixMenuTimer>()
+        .init_resource::<MrProducerTimer>()
         .add_state::<GameState>()
         .add_state::<Invincible>()
+        .add_state::<MrProducerState>()
         .add_event::<GameStart>()
         .add_event::<GameOver>()
         .add_systems(Startup, (spawn_camera, setup_cursor))
@@ -75,9 +77,9 @@ fn main() {
             Update,
             (
                 tick_enemy_timer.run_if(in_state(GameState::Game)),
-                tick_invinci_duration.run_if(in_state(Invincible::On)),
-                disable_invincibility.run_if(in_state(Invincible::On)),
                 fix_menu_first_game.run_if(in_state(GameState::Menu)),
+                interact_with_sound_button.run_if(in_state(GameState::Menu)),
+                mr_producer
             ),
         )
         .run();

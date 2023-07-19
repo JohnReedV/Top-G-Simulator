@@ -40,3 +40,9 @@ pub struct Invinci {}
 
 #[derive(Component)]
 pub struct DrawEnemyNumber {}
+
+#[derive(Component)]
+pub struct SoundButton {}
+
+#[derive(Component)]
+pub struct MrProducerSong {}

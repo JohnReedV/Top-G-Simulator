@@ -277,14 +277,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ball-game"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "rand",
-]
-
-[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3052,6 +3044,14 @@ dependencies = [
  "indexmap 2.0.0",
  "toml_datetime",
  "winnow",
+]
+
+[[package]]
+name = "top_g_simulator"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "rand",
 ]
 
 [[package]]
