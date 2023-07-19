@@ -49,10 +49,11 @@ fn main() {
         .add_systems(
             Update,
             (
+                game_start_event.before(spawn_enemies),
+                spawn_enemies,
                 interact_with_play_button.run_if(in_state(GameState::Menu)),
                 interact_with_quit_button.run_if(in_state(GameState::Menu)),
                 window_border_movement.run_if(in_state(GameState::Game)),
-                spawn_enemies,
                 player_movement.run_if(in_state(GameState::Game)),
                 enemy_movement,
                 confine_enemy_to_window,
@@ -64,7 +65,6 @@ fn main() {
                 fps_system,
                 game_over_event_receiver,
                 despawn_main_menu.run_if(in_state(GameState::Game)),
-                game_start_event,
                 update_player_colors.run_if(in_state(GameState::Game)),
                 spawn_invincibility.run_if(in_state(GameState::Game)),
                 collect_invincibility.run_if(in_state(GameState::Game)),
