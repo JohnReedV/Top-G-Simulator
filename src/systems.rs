@@ -141,16 +141,27 @@ pub fn spawn_enemies(
             let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
             let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
 
-            let mut random_x = (random::<f32>() * width * 2.0) - width;
-            let mut random_y = (random::<f32>() * height * 2.0) - height;
+            let edge = rand::random::<u8>() % 4;
+            let (mut random_x, mut random_y) = match edge {
+                0 => ((random::<f32>() * width * 2.0) - width, height),
+                1 => ((random::<f32>() * width * 2.0) - width, -height),
+                2 => (width, (random::<f32>() * height * 2.0) - height),
+                _ => (-width, (random::<f32>() * height * 2.0) - height),
+            };
 
             if let Ok(player_transform) = player_query.get_single() {
                 let player_x: f32 = player_transform.translation.x;
                 let player_y: f32 = player_transform.translation.y;
 
                 while is_collision(random_x, random_y, player_x, player_y) {
-                    random_x = (random::<f32>() * width * 2.0) - width;
-                    random_y = (random::<f32>() * height * 2.0) - height;
+                    let (new_x, new_y) = match edge {
+                        0 => ((random::<f32>() * width * 2.0) - width, height),
+                        1 => ((random::<f32>() * width * 2.0) - width, -height),
+                        2 => (width, (random::<f32>() * height * 2.0) - height),
+                        _ => (-width, (random::<f32>() * height * 2.0) - height),
+                    };
+                    random_x = new_x;
+                    random_y = new_y;
                 }
             }
 
@@ -448,7 +459,7 @@ pub fn update_score(
     }
 
     let window = window_query.get_single().unwrap();
-    let x = -window.width() / 2.0 + 55.0;
+    let x = -window.width() / 2.0 + 57.0;
     let y = window.height() / 2.0 - 30.0;
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
