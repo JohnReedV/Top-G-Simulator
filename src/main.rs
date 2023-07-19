@@ -43,9 +43,9 @@ fn main() {
         .add_state::<Invincible>()
         .add_event::<GameStart>()
         .add_event::<GameOver>()
-        .add_systems(Startup, spawn_camera)
-        .add_systems(OnEnter(GameState::Menu), spawn_main_menu)
-        .add_systems(OnExit(GameState::Menu), spawn_player)
+        .add_systems(Startup, (spawn_camera, setup_cursor))
+        .add_systems(OnEnter(GameState::Menu), (spawn_main_menu, toggle_cursor))
+        .add_systems(OnExit(GameState::Menu), (spawn_player, toggle_cursor))
         .add_systems(
             Update,
             (

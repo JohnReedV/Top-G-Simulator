@@ -5,8 +5,28 @@ use crate::events::*;
 use crate::resources::*;
 use crate::styles::*;
 use crate::utils::*;
-use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
+use bevy::{
+    app::AppExit,
+    prelude::*,
+    window::{CursorGrabMode, PrimaryWindow},
+};
 use rand::prelude::*;
+
+pub fn setup_cursor(mut windows: Query<&mut Window>) {
+    let mut window = windows.single_mut();
+    window.cursor.visible = false;
+    window.cursor.grab_mode = CursorGrabMode::Locked;
+}
+
+pub fn toggle_cursor(mut windows: Query<&mut Window>) {
+    let mut window = windows.single_mut();
+
+    window.cursor.visible = !window.cursor.visible;
+    window.cursor.grab_mode = match window.cursor.grab_mode {
+        CursorGrabMode::None => CursorGrabMode::Locked,
+        CursorGrabMode::Locked | CursorGrabMode::Confined => CursorGrabMode::None,
+    };
+}
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle { ..default() });
