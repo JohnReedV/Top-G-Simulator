@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rand::{Rng, rngs::StdRng, SeedableRng}; 
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 #[derive(Resource)]
 pub struct Enemies {
@@ -90,7 +90,6 @@ pub enum Invincible {
     On,
 }
 
-
 #[derive(Resource)]
 pub struct SpawnInvinciTimer {
     pub timer: Timer,
@@ -150,4 +149,22 @@ pub enum MrProducerState {
     Off,
     #[default]
     On,
+}
+
+#[derive(Resource)]
+pub struct SpawnCoffeeTimer {
+    pub timer: Timer,
+    pub rng: StdRng,
+}
+
+impl Default for SpawnCoffeeTimer {
+    fn default() -> Self {
+        let mut rng = StdRng::from_entropy();
+        let random_time = rng.gen_range(0.0..90.0);
+
+        SpawnCoffeeTimer {
+            timer: Timer::from_seconds(random_time, TimerMode::Repeating),
+            rng,
+        }
+    }
 }

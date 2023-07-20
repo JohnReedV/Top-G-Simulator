@@ -35,6 +35,7 @@ fn main() {
         .init_resource::<InvinciDurationTimer>()
         .init_resource::<FixMenuTimer>()
         .init_resource::<MrProducerTimer>()
+        .init_resource::<SpawnCoffeeTimer>()
         .add_state::<GameState>()
         .add_state::<Invincible>()
         .add_state::<MrProducerState>()
@@ -76,6 +77,10 @@ fn main() {
                 tick_enemy_timer.run_if(in_state(GameState::Game)),
                 fix_menu_first_game.run_if(in_state(GameState::Menu)),
                 interact_with_sound_button.run_if(not(in_state(GameState::Game))),
+                spawn_coffee.run_if(in_state(GameState::Game)),
+                collect_coffee
+                    .run_if(in_state(GameState::Game))
+                    .before(spawn_stars),
                 mr_producer,
             ),
         )

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Player {
     pub timer: Timer,
-    pub color_index: usize
+    pub color_index: usize,
 }
 
 #[derive(Component)]
@@ -49,3 +49,8 @@ pub struct MrProducerSong {}
 
 #[derive(Component)]
 pub struct InvinciSong {}
+
+#[derive(Component)]
+pub struct Coffee {
+    pub collected: bool,
+}

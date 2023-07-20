@@ -215,13 +215,28 @@ pub fn spawn_stars(
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
     mut star_query: Query<(Entity, &Transform), With<Star>>,
+    mut coffee_query: Query<&mut Coffee, With<Coffee>>,
 ) {
     let mut current_stars: usize = 0;
     for (_star_entity, _star_transform) in star_query.iter_mut() {
         current_stars += 1;
     }
 
-    for _ in 0..(NUMBER_OF_STARS - current_stars) {
+    let coffee_star_bonus: usize = NUMBER_OF_STARS * 3;
+    let mut star_number: usize = if current_stars > NUMBER_OF_STARS {
+        0
+    } else {
+        NUMBER_OF_STARS - current_stars
+    };
+
+    for mut coffee in coffee_query.iter_mut() {
+        if coffee.collected {
+            coffee.collected = false;
+            star_number = coffee_star_bonus;
+        }
+    }
+
+    for _ in 0..(star_number) {
         let window = window_query.get_single().unwrap();
         let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
         let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
@@ -237,6 +252,74 @@ pub fn spawn_stars(
             },
             Star {},
         ));
+    }
+}
+
+pub fn spawn_coffee(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    mut coffee_spawn_timer: ResMut<SpawnCoffeeTimer>,
+    time: Res<Time>,
+) {
+    coffee_spawn_timer.timer.tick(time.delta());
+
+    if coffee_spawn_timer.timer.just_finished() {
+        let window = window_query.get_single().unwrap();
+        let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
+        let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
+
+        let random_x = (random::<f32>() * width * 2.0) - width;
+        let random_y = (random::<f32>() * height * 2.0) - height;
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0),
+                texture: asset_server.load("sprites/coffee.png"),
+                ..default()
+            },
+            Coffee { collected: false },
+        ));
+
+        let random_time = coffee_spawn_timer.rng.gen_range(0..90);
+        coffee_spawn_timer
+            .timer
+            .set_duration(Duration::from_secs(random_time));
+        coffee_spawn_timer.timer.reset();
+    }
+}
+
+pub fn collect_coffee(
+    mut commands: Commands,
+    mut coffee_query: Query<(Entity, &Transform, &mut Coffee), With<Coffee>>,
+    player_query: Query<&Transform, With<Player>>,
+    asset_server: Res<AssetServer>,
+    mut music_controller: Query<&AudioSink, With<MrProducerSong>>,
+    mut mr_producer_timer: ResMut<MrProducerTimer>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (coffee_entity, coffee_transform, mut coffee) in coffee_query.iter_mut() {
+            if is_collision(
+                coffee_transform.translation.x,
+                coffee_transform.translation.y,
+                player_transform.translation.x,
+                player_transform.translation.y,
+            ) {
+                for mr_producer_controller in music_controller.iter_mut() {
+                    mr_producer_controller.stop();
+                }
+                mr_producer_timer.timer.set_duration(Duration::from_secs(6));
+                mr_producer_timer.timer.set_elapsed(Duration::from_secs(0));
+
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/tatebass.ogg"),
+                    ..default()
+                });
+
+                coffee.collected = true;
+                commands.entity(coffee_entity).despawn();
+            }
+        }
     }
 }
 
@@ -256,10 +339,7 @@ pub fn spawn_invincibility(
         invinci_exist = true;
     }
 
-    if invinci_spawn_timer.timer.just_finished()
-        && !invinci_exist
-        && *invinci_state != Invincible::On
-    {
+    if invinci_spawn_timer.timer.finished() && !invinci_exist && *invinci_state != Invincible::On {
         let window = window_query.get_single().unwrap();
         let width = (window.width() / 2.0) - (ENEMY_SIZE / 2.0);
         let height = (window.height() / 2.0) - (ENEMY_SIZE / 2.0);
@@ -547,7 +627,7 @@ pub fn pause_game(
             }
             GameState::Paused => {
                 game_state.set(GameState::Game);
-                
+
                 match *invinci_state.get() {
                     Invincible::On => {
                         for invinci_controller in music_controller.iter_mut() {
