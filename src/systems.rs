@@ -527,19 +527,37 @@ pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time
 pub fn pause_game(
     keyboard_input: Res<Input<KeyCode>>,
     mut game_state: ResMut<NextState<GameState>>,
+    game_state_const: Res<State<GameState>>,
     mut music_controller: Query<&AudioSink, With<InvinciSong>>,
     invinci_state: Res<State<Invincible>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        game_state.set(GameState::Paused);
+        match *game_state_const.get() {
+            GameState::Game => {
+                game_state.set(GameState::Paused);
 
-        match *invinci_state.get() {
-            Invincible::On => {
-                for invinci_controller in music_controller.iter_mut() {
-                    invinci_controller.pause();
+                match *invinci_state.get() {
+                    Invincible::On => {
+                        for invinci_controller in music_controller.iter_mut() {
+                            invinci_controller.pause();
+                        }
+                    }
+                    Invincible::Off => {}
                 }
             }
-            Invincible::Off => {}
+            GameState::Paused => {
+                game_state.set(GameState::Game);
+                
+                match *invinci_state.get() {
+                    Invincible::On => {
+                        for invinci_controller in music_controller.iter_mut() {
+                            invinci_controller.play();
+                        }
+                    }
+                    Invincible::Off => {}
+                }
+            }
+            GameState::Menu => {}
         }
     }
 }

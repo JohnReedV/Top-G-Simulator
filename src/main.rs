@@ -60,7 +60,7 @@ fn main() {
                 spawn_stars,
                 collect_stars,
                 update_score,
-                pause_game.run_if(in_state(GameState::Game)),
+                pause_game.run_if(not(in_state(GameState::Menu))),
                 fps_system,
                 game_over_event_receiver,
                 despawn_main_menu.run_if(in_state(GameState::Game)),
