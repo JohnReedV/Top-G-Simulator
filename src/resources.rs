@@ -69,6 +69,7 @@ impl FpsTracker {
 pub enum GameState {
     #[default]
     Menu,
+    Paused,
     Game,
 }
 

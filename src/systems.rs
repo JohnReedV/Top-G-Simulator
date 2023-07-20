@@ -323,10 +323,13 @@ pub fn collect_invincibility(
                             .set_duration(Duration::from_secs(32));
                         mr_producer_timer.timer.set_elapsed(Duration::from_secs(0));
 
-                        commands.spawn(AudioBundle {
-                            source: asset_server.load("audio/Invincibility.oga"),
-                            ..default()
-                        });
+                        commands.spawn((
+                            AudioBundle {
+                                source: asset_server.load("audio/Invincibility.oga"),
+                                ..default()
+                            },
+                            InvinciSong {},
+                        ));
                     }
                 }
             }
@@ -521,9 +524,23 @@ pub fn tick_enemy_timer(mut enemy_timer: ResMut<SpawnEnemyTimer>, time: Res<Time
     enemy_timer.timer.tick(time.delta());
 }
 
-pub fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut exit: EventWriter<AppExit>) {
+pub fn pause_game(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut game_state: ResMut<NextState<GameState>>,
+    mut music_controller: Query<&AudioSink, With<InvinciSong>>,
+    invinci_state: Res<State<Invincible>>,
+) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        exit.send(AppExit);
+        game_state.set(GameState::Paused);
+
+        match *invinci_state.get() {
+            Invincible::On => {
+                for invinci_controller in music_controller.iter_mut() {
+                    invinci_controller.pause();
+                }
+            }
+            Invincible::Off => {}
+        }
     }
 }
 
@@ -574,12 +591,34 @@ pub fn interact_with_play_button(
         (Changed<Interaction>, With<PlayButton>),
     >,
     mut game_start_event_writer: EventWriter<GameStart>,
+    mut game_state: ResMut<NextState<GameState>>,
+    game_state_const: Res<State<GameState>>,
+    mut music_controller: Query<&AudioSink, With<InvinciSong>>,
+    invinci_state: Res<State<Invincible>>,
 ) {
     if let Ok((interaction, mut background_color)) = button_query.get_single_mut() {
         match *interaction {
             Interaction::Pressed => {
                 *background_color = PRESSED_BUTTON_COLOR.into();
-                game_start_event_writer.send(GameStart {});
+
+                match *game_state_const.get() {
+                    GameState::Menu => {
+                        game_start_event_writer.send(GameStart {});
+                    }
+                    GameState::Paused => {
+                        game_state.set(GameState::Game);
+
+                        match *invinci_state.get() {
+                            Invincible::On => {
+                                for invinci_controller in music_controller.iter_mut() {
+                                    invinci_controller.play();
+                                }
+                            }
+                            Invincible::Off => {}
+                        }
+                    }
+                    GameState::Game => {}
+                }
             }
             Interaction::Hovered => {
                 *background_color = HOVERED_BUTTON_COLOR.into();
@@ -632,7 +671,9 @@ pub fn interact_with_sound_button(
                     mut_mr_producer_state.set(MrProducerState::Off);
                 } else if *mr_producer_state.get() == MrProducerState::Off {
                     mut_mr_producer_state.set(MrProducerState::On);
-                    mr_producer_timer.timer.set_duration(Duration::from_secs(26));
+                    mr_producer_timer
+                        .timer
+                        .set_duration(Duration::from_secs(26));
                     mr_producer_timer.timer.set_elapsed(Duration::from_secs(25));
                 }
             }

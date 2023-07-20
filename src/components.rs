@@ -46,3 +46,6 @@ pub struct SoundButton {}
 
 #[derive(Component)]
 pub struct MrProducerSong {}
+
+#[derive(Component)]
+pub struct InvinciSong {}

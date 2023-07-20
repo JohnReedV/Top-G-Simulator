@@ -43,22 +43,24 @@ fn main() {
         .add_systems(Startup, (spawn_camera, setup_cursor))
         .add_systems(OnEnter(GameState::Menu), (spawn_main_menu, toggle_cursor))
         .add_systems(OnExit(GameState::Menu), (spawn_player, toggle_cursor))
+        .add_systems(OnEnter(GameState::Paused), (spawn_main_menu, toggle_cursor))
+        .add_systems(OnExit(GameState::Paused), toggle_cursor)
         .add_systems(
             Update,
             (
                 game_start_event.before(spawn_enemies),
                 spawn_enemies,
-                interact_with_play_button.run_if(in_state(GameState::Menu)),
-                interact_with_quit_button.run_if(in_state(GameState::Menu)),
+                interact_with_play_button.run_if(not(in_state(GameState::Game))),
+                interact_with_quit_button.run_if(not(in_state(GameState::Game))),
                 window_border_movement.run_if(in_state(GameState::Game)),
                 player_movement.run_if(in_state(GameState::Game)),
-                enemy_movement,
+                enemy_movement.run_if(not(in_state(GameState::Paused))),
                 confine_enemy_to_window,
                 detect_collision.run_if(in_state(GameState::Game)),
                 spawn_stars,
                 collect_stars,
                 update_score,
-                exit_game,
+                pause_game.run_if(in_state(GameState::Game)),
                 fps_system,
                 game_over_event_receiver,
                 despawn_main_menu.run_if(in_state(GameState::Game)),
@@ -73,7 +75,7 @@ fn main() {
             (
                 tick_enemy_timer.run_if(in_state(GameState::Game)),
                 fix_menu_first_game.run_if(in_state(GameState::Menu)),
-                interact_with_sound_button.run_if(in_state(GameState::Menu)),
+                interact_with_sound_button.run_if(not(in_state(GameState::Game))),
                 mr_producer,
             ),
         )
