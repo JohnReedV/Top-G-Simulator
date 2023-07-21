@@ -3047,7 +3047,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "top_g_simulator"
+name = "top-g-simulator"
 version = "0.1.0"
 dependencies = [
  "bevy",
