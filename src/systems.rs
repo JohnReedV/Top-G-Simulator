@@ -124,7 +124,7 @@ pub fn draw_enemy_number(
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     let text_style = TextStyle {
-        font: font.clone(),
+        font: font,
         font_size: 30.0,
         color: Color::WHITE,
     };
@@ -586,7 +586,7 @@ pub fn update_score(
 
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     let text_style = TextStyle {
-        font: font.clone(),
+        font: font,
         font_size: 30.0,
         color: Color::WHITE,
     };
@@ -668,7 +668,7 @@ pub fn fps_system(
 
         let font = asset_server.load("fonts/FiraSans-Bold.ttf");
         let text_style = TextStyle {
-            font: font.clone(),
+            font: font,
             font_size: 30.0,
             color: Color::WHITE,
         };
