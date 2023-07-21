@@ -1,3 +1,13 @@
+#![windows_subsystem = "windows"]
+
+use windows::{
+    core::{Result, PCWSTR},
+    Win32::{
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_DEFAULTSIZE},
+    },
+};
+
 pub mod components;
 pub mod events;
 pub mod resources;
@@ -14,7 +24,25 @@ use bevy::{
     window::{PresentMode, WindowMode},
 };
 
+fn build_image() -> Result<()> {
+    let _icon = unsafe {
+        LoadImageW(
+            GetModuleHandleW(None)?,
+            PCWSTR(1 as _), // Value must match the `nameID` in the .rc script
+            IMAGE_ICON,
+            0,
+            0,
+            LR_DEFAULTSIZE,
+        )
+    }?;
+
+    Ok(())
+}
+
 fn main() {
+
+    let _ = build_image();
+
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
